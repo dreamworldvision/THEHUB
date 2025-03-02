@@ -1,0 +1,56 @@
+html
+Wrap
+Copy
+<!-- QR Code Generator Widget -->
+<div id="qr-widget" style="max-width: 400px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; font-family: Arial, sans-serif;">
+  <h3 style="margin-top: 0; text-align: center;">Generate a QR Code</h3>
+  <input 
+    type="text" 
+    id="qr-input" 
+    placeholder="Enter URL or text (e.g., https://example.com)" 
+    style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;"
+  >
+  <button 
+    onclick="generateQRCode()" 
+    style="width: 100%; padding: 10px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;"
+  >
+    Create QR Code
+  </button>
+  <div id="qr-output" style="text-align: center; margin-top: 15px;"></div>
+</div>
+
+<!-- QR Code Library (CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
+<!-- JavaScript Logic -->
+<script>
+  function generateQRCode() {
+    const input = document.getElementById('qr-input').value;
+    const output = document.getElementById('qr-output');
+    
+    // Clear previous QR code
+    output.innerHTML = '';
+    
+    if (!input) {
+      output.innerHTML = '<p style="color: red;">Please enter a URL or text!</p>';
+      return;
+    }
+    
+    // Generate QR code
+    QRCode.toCanvas(input, { width: 200, margin: 1 }, function (error, canvas) {
+      if (error) {
+        output.innerHTML = '<p style="color: red;">Error generating QR code!</p>';
+        console.error(error);
+      } else {
+        output.appendChild(canvas);
+        // Add download link
+        const downloadLink = document.createElement('a');
+        downloadLink.href = canvas.toDataURL('image/png');
+        downloadLink.download = 'qrcode.png';
+        downloadLink.innerText = 'Download QR Code';
+        downloadLink.style = 'display: block; margin-top: 10px; color: #4CAF50; text-decoration: none;';
+        output.appendChild(downloadLink);
+      }
+    });
+  }
+</script>

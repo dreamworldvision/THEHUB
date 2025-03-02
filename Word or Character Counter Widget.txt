@@ -1,0 +1,42 @@
+<!-- Word/Character Counter Widget -->
+<div id="word-counter-widget" style="max-width: 400px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; font-family: Arial, sans-serif;">
+  <h3 style="margin-top: 0; text-align: center;">Word & Character Counter</h3>
+  <textarea 
+    id="text-input" 
+    placeholder="Type or paste your text here..." 
+    style="width: 100%; height: 100px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; box-sizing: border-box;"
+    oninput="countText()"
+  ></textarea>
+  <div style="margin-top: 15px; text-align: center;">
+    <p>Words: <span id="word-count">0</span></p>
+    <p>Characters (with spaces): <span id="char-count">0</span></p>
+    <p>Characters (no spaces): <span id="char-no-spaces">0</span></p>
+    <p>Sentences: <span id="sentence-count">0</span></p>
+  </div>
+</div>
+
+<!-- JavaScript Logic -->
+<script>
+  function countText() {
+    const text = document.getElementById('text-input').value;
+    const wordCount = document.getElementById('word-count');
+    const charCount = document.getElementById('char-count');
+    const charNoSpaces = document.getElementById('char-no-spaces');
+    const sentenceCount = document.getElementById('sentence-count');
+
+    // Word count (split by whitespace, filter out empty strings)
+    const words = text.trim().split(/\s+/).filter(word => word.length > 0);
+    wordCount.textContent = text.trim() ? words.length : 0;
+
+    // Character count (with spaces)
+    charCount.textContent = text.length;
+
+    // Character count (no spaces)
+    const noSpaces = text.replace(/\s/g, '');
+    charNoSpaces.textContent = noSpaces.length;
+
+    // Sentence count (split by .!? followed by space or end, filter empty)
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    sentenceCount.textContent = text ? sentences.length : 0;
+  }
+</script>

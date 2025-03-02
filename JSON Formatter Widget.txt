@@ -1,0 +1,61 @@
+<!-- JSON Formatter Widget -->
+<div id="json-formatter-widget" style="max-width: 400px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; font-family: Arial, sans-serif;">
+  <h3 style="margin-top: 0; text-align: center;">JSON Formatter</h3>
+  <textarea 
+    id="json-input" 
+    placeholder="Paste your JSON here..." 
+    style="width: 100%; height: 100px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; box-sizing: border-box; font-family: monospace;"
+    oninput="formatJSON()"
+  ></textarea>
+  <button 
+    onclick="formatJSON()" 
+    style="width: 100%; padding: 10px; background-color: #3F51B5; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 10px 0;"
+  >
+    Format JSON
+  </button>
+  <textarea 
+    id="json-output" 
+    readonly 
+    placeholder="Formatted JSON will appear here..." 
+    style="width: 100%; height: 100px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; box-sizing: border-box; font-family: monospace;"
+  ></textarea>
+  <button 
+    onclick="copyJSON()" 
+    style="width: 100%; padding: 10px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px;"
+  >
+    Copy Formatted JSON
+  </button>
+  <div id="json-error" style="text-align: center; margin-top: 10px; color: red;"></div>
+</div>
+
+<!-- JavaScript Logic -->
+<script>
+  function formatJSON() {
+    const input = document.getElementById('json-input').value;
+    const output = document.getElementById('json-output');
+    const error = document.getElementById('json-error');
+
+    output.value = '';
+    error.textContent = '';
+
+    if (!input.trim()) {
+      error.textContent = 'Please enter some JSON!';
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(input);
+      const formatted = JSON.stringify(parsed, null, 2);
+      output.value = formatted;
+    } catch (e) {
+      error.textContent = 'Invalid JSON: ' + e.message;
+    }
+  }
+
+  function copyJSON() {
+    const output = document.getElementById('json-output');
+    output.select();
+    document.execCommand('copy');
+    alert('Formatted JSON copied to clipboard!');
+  }
+</script>

@@ -1,0 +1,128 @@
+import os
+import argparse
+import subprocess
+from enum import Enum
+
+class Formats(Enum):
+    MP4 = "mp4"
+    AVI = "avi"
+    MOV = "mov"
+    MKV = "mkv"
+    WEBM = "webm"
+
+class Preset(Enum):
+    LOW = "480p"
+    HD = "720p"
+    FHD = "1080p"
+    UHD = "2160p"
+    RETINA = "1440p"
+
+RESOLUTIONS = {
+    Preset.LOW: "854x480",
+    Preset.HD: "1280x720",
+    Preset.FHD: "1920x1080",
+    Preset.UHD: "3840x2160",
+    Preset.RETINA: "2560x1440"
+}
+
+def get_codec_settings(output_format, preset):
+    """Return optimal codec settings for format/resolution"""
+    base_config = {
+        "crf": "23",
+        "preset": "medium",
+        "pix_fmt": "yuv420p"
+    }
+    
+    if output_format == Formats.MP4.value:
+        return {
+            **base_config,
+            "vcodec": "libx264",
+            "acodec": "aac"
+        }
+    elif output_format == Formats.WEBM.value:
+        return {
+            **base_config,
+            "vcodec": "libvpx-vp9",
+            "acodec": "libopus",
+            "crf": "30"
+        }
+    elif output_format == Formats.MOV.value:
+        return {
+            **base_config,
+            "vcodec": "prores_ks",
+            "acodec": "pcm_s16le"
+        }
+    # Add other formats as needed
+
+def convert_video(input_path, output_path, output_format, preset, bitrate=None):
+    """Convert video using FFmpeg with specified parameters"""
+    resolution = RESOLUTIONS[Preset(preset)]
+    codec_config = get_codec_settings(output_format, preset)
+    
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i", input_path,
+        "-vf", f"scale={resolution}",
+        "-c:v", codec_config["vcodec"],
+        "-c:a", codec_config["acodec"],
+        "-crf", codec_config["crf"],
+        "-preset", codec_config["preset"],
+        "-pix_fmt", codec_config["pix_fmt"]
+    ]
+    
+    if bitrate:
+        cmd.extend(["-b:v", f"{bitrate}k"])
+    
+    cmd.append(output_path)
+    
+    try:
+        subprocess.run(cmd, check=True, stderr=subprocess.PIPE)
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"Conversion failed: {e.stderr.decode()}")
+        return False
+
+def batch_convert(input_dir, output_dir, output_format, preset):
+    """Convert all videos in a directory"""
+    converted = []
+    for filename in os.listdir(input_dir):
+        if filename.split('.')[-1] in ['mp4', 'mov', 'avi', 'mkv']:
+            input_path = os.path.join(input_dir, filename)
+            output_path = os.path.join(
+                output_dir,
+                f"{os.path.splitext(filename)[0]}.{output_format}"
+            )
+            if convert_video(input_path, output_path, output_format, preset):
+                converted.append(output_path)
+    return converted
+
+def main():
+    parser = argparse.ArgumentParser(description="Video Conversion Tool")
+    parser.add_argument("input", help="Input file/directory")
+    parser.add_argument("-f", "--format", type=str, choices=[f.value for f in Formats],
+                       required=True, help="Output format")
+    parser.add_argument("-p", "--preset", type=str, choices=[p.value for p in Preset],
+                       default="1080p", help="Resolution preset")
+    parser.add_argument("-o", "--output", default="converted", help="Output directory")
+    parser.add_argument("-b", "--bitrate", type=int, help="Target bitrate (kbps)")
+    
+    args = parser.parse_args()
+    
+    os.makedirs(args.output, exist_ok=True)
+    
+    if os.path.isdir(args.input):
+        results = batch_convert(args.input, args.output, args.format, args.preset)
+        print(f"Converted {len(results)} files:")
+        for path in results:
+            print(f"- {path}")
+    else:
+        output_path = os.path.join(
+            args.output,
+            f"{os.path.splitext(os.path.basename(args.input))[0]}.{args.format}"
+        )
+        if convert_video(args.input, output_path, args.format, args.preset, args.bitrate):
+            print(f"Conversion successful: {output_path}")
+
+if __name__ == "__main__":
+    main()

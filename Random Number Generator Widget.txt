@@ -1,0 +1,84 @@
+<!-- Random Number Generator Widget -->
+<div id="random-number-widget" style="max-width: 400px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; font-family: Arial, sans-serif;">
+  <h3 style="margin-top: 0; text-align: center;">Random Number Generator</h3>
+  <div style="margin-bottom: 10px;">
+    <label>Min: </label>
+    <input 
+      type="number" 
+      id="min-input" 
+      value="1" 
+      style="width: 40%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-right: 10px;"
+      oninput="generateNumbers()"
+    >
+    <label>Max: </label>
+    <input 
+      type="number" 
+      id="max-input" 
+      value="100" 
+      style="width: 40%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"
+      oninput="generateNumbers()"
+    >
+  </div>
+  <div style="margin-bottom: 10px;">
+    <label>Quantity: <span id="quantity-display">1</span></label>
+    <input 
+      type="range" 
+      id="quantity-input" 
+      min="1" 
+      max="10" 
+      value="1" 
+      style="width: 100%;"
+      oninput="document.getElementById('quantity-display').innerText = this.value; generateNumbers()"
+    >
+  </div>
+  <button 
+    onclick="generateNumbers()" 
+    style="width: 100%; padding: 10px; background-color: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 10px;"
+  >
+    Generate Numbers
+  </button>
+  <textarea 
+    id="number-output" 
+    readonly 
+    style="width: 100%; height: 100px; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; box-sizing: border-box; text-align: center;"
+  ></textarea>
+  <button 
+    onclick="copyNumbers()" 
+    style="width: 100%; padding: 10px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px;"
+  >
+    Copy Numbers
+  </button>
+</div>
+
+<!-- JavaScript Logic -->
+<script>
+  function generateNumbers() {
+    const min = parseInt(document.getElementById('min-input').value) || 1;
+    const max = parseInt(document.getElementById('max-input').value) || 100;
+    const quantity = parseInt(document.getElementById('quantity-input').value);
+    const output = document.getElementById('number-output');
+
+    if (min > max) {
+      output.value = 'Error: Min cannot be greater than Max!';
+      return;
+    }
+
+    const numbers = [];
+    for (let i = 0; i < quantity; i++) {
+      const randomNum = Math.floor(Math.random() * (max - min + 1)) + min;
+      numbers.push(randomNum);
+    }
+
+    output.value = numbers.join('\n');
+  }
+
+  function copyNumbers() {
+    const output = document.getElementById('number-output');
+    output.select();
+    document.execCommand('copy');
+    alert('Numbers copied to clipboard!');
+  }
+
+  // Generate on load
+  generateNumbers();
+</script>

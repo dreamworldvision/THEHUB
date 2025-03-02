@@ -1,0 +1,45 @@
+<!-- Unit Converter Widget -->
+<div id="unit-converter-widget" style="max-width: 400px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; font-family: Arial, sans-serif;">
+  <h3 style="margin-top: 0; text-align: center;">Unit Converter</h3>
+  <div style="margin-bottom: 10px;">
+    <select id="category-select" onchange="updateUnits()" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+      <option value="length">Length</option>
+      <option value="weight">Weight</option>
+      <option value="temperature">Temperature</option>
+    </select>
+  </div>
+  <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+    <input 
+      type="number" 
+      id="input-value" 
+      placeholder="Enter value" 
+      style="width: 50%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"
+      oninput="convertUnits()"
+    >
+    <select id="from-unit" onchange="convertUnits()" style="width: 50%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></select>
+  </div>
+  <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+    <input 
+      type="number" 
+      id="output-value" 
+      readonly 
+      placeholder="Result" 
+      style="width: 50%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"
+    >
+    <select id="to-unit" onchange="convertUnits()" style="width: 50%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></select>
+  </div>
+</div>
+
+<!-- JavaScript Logic -->
+<script>
+  const conversions = {
+    length: {
+      units: [
+        { name: 'Meters', factor: 1 },
+        { name: 'Feet', factor: 3.28084 },
+        { name: 'Inches', factor: 39.3701 },
+        { name: 'Kilometers', factor: 0.001 }
+      ]
+    },
+    weight: {
+      units

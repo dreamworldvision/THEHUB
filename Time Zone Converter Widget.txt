@@ -1,0 +1,84 @@
+<!-- Time Zone Converter Widget -->
+<div id="timezone-converter-widget" style="max-width: 400px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; font-family: Arial, sans-serif;">
+  <h3 style="margin-top: 0; text-align: center;">Time Zone Converter</h3>
+  <div style="margin-bottom: 10px;">
+    <input 
+      type="datetime-local" 
+      id="datetime-input" 
+      style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"
+      oninput="convertTimeZone()"
+    >
+  </div>
+  <div style="margin-bottom: 10px;">
+    <label>From:</label>
+    <select id="from-timezone" onchange="convertTimeZone()" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></select>
+  </div>
+  <div style="margin-bottom: 10px;">
+    <label>To:</label>
+    <select id="to-timezone" onchange="convertTimeZone()" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"></select>
+  </div>
+  <div id="timezone-output" style="text-align: center; margin-top: 15px;">
+    <p>Converted Time: <span id="converted-time">-</span></p>
+  </div>
+</div>
+
+<!-- JavaScript Logic -->
+<script>
+  const timeZones = Intl.supportedValuesOf('timeZone');
+  const fromSelect = document.getElementById('from-timezone');
+  const toSelect = document.getElementById('to-timezone');
+
+  // Populate time zone dropdowns
+  timeZones.forEach(zone => {
+    const option1 = document.createElement('option');
+    option1.value = zone;
+    option1.text = zone;
+    fromSelect.appendChild(option1);
+
+    const option2 = document.createElement('option');
+    option2.value = zone;
+    option2.text = zone;
+    toSelect.appendChild(option2);
+  });
+
+  // Set defaults (e.g., local time zone and a common one)
+  fromSelect.value = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  toSelect.value = 'America/New_York';
+
+  function convertTimeZone() {
+    const input = document.getElementById('datetime-input').value;
+    const fromZone = document.getElementById('from-timezone').value;
+    const toZone = document.getElementById('to-timezone').value;
+    const output = document.getElementById('converted-time');
+
+    if (!input) {
+      output.textContent = '-';
+      return;
+    }
+
+    try {
+      const date = new Date(input);
+      const fromTime = new Intl.DateTimeFormat('en-US', {
+        timeZone: fromZone,
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: 'numeric', minute: '2-digit', second: '2-digit',
+        hour12: true
+      }).format(date);
+
+      const toTime = new Intl.DateTimeFormat('en-US', {
+        timeZone: toZone,
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: 'numeric', minute: '2-digit', second: '2-digit',
+        hour12: true
+      }).format(date);
+
+      output.textContent = `${toTime} (${toZone})`;
+    } catch (e) {
+      output.textContent = 'Error converting time';
+    }
+  }
+
+  // Set default input to current time
+  document.getElementById('datetime-input').value = new Date().toISOString().slice(0, 16);
+  convertTimeZone();
+</script>

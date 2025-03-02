@@ -1,0 +1,98 @@
+<!-- Currency Converter Widget -->
+<div id="currency-converter-widget" style="max-width: 400px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; font-family: Arial, sans-serif;">
+  <h3 style="margin-top: 0; text-align: center;">Currency Converter</h3>
+  <div style="margin-bottom: 10px;">
+    <input 
+      type="number" 
+      id="amount-input" 
+      placeholder="Enter amount" 
+      style="width: 50%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"
+      oninput="convertCurrency()"
+    >
+    <select id="from-currency" onchange="convertCurrency()" style="width: 45%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-left: 5px;"></select>
+  </div>
+  <div style="margin-bottom: 10px;">
+    <input 
+      type="number" 
+      id="result-output" 
+      readonly 
+      placeholder="Result" 
+      style="width: 50%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;"
+    >
+    <select id="to-currency" onchange="convertCurrency()" style="width: 45%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; margin-left: 5px;"></select>
+  </div>
+  <div id="currency-error" style="text-align: center; margin-top: 10px; color: red;"></div>
+</div>
+
+<!-- JavaScript Logic -->
+<script>
+  const currencies = [
+    { code: 'USD', name: 'US Dollar' },
+    { code: 'EUR', name: 'Euro' },
+    { code: 'GBP', name: 'British Pound' },
+    { code: 'JPY', name: 'Japanese Yen' },
+    { code: 'CAD', name: 'Canadian Dollar' }
+  ];
+
+  const fromSelect = document.getElementById('from-currency');
+  const toSelect = document.getElementById('to-currency');
+
+  // Populate currency dropdowns
+  currencies.forEach(currency => {
+    const option1 = document.createElement('option');
+    option1.value = currency.code;
+    option1.text = `${currency.code} - ${currency.name}`;
+    fromSelect.appendChild(option1);
+
+    const option2 = document.createElement('option');
+    option2.value = currency.code;
+    option2.text = `${currency.code} - ${currency.name}`;
+    toSelect.appendChild(option2);
+  });
+
+  fromSelect.value = 'USD';
+  toSelect.value = 'EUR';
+
+  async function convertCurrency() {
+    const amount = parseFloat(document.getElementById('amount-input').value) || 0;
+    const fromCurrency = document.getElementById('from-currency').value;
+    const toCurrency = document.getElementById('to-currency').value;
+    const output = document.getElementById('result-output');
+    const error = document.getElementById('currency-error');
+
+    output.value = '';
+    error.textContent = '';
+
+    if (!amount) {
+      return;
+    }
+
+    try {
+      // Replace with your API key from exchangeratesapi.io or another service
+      const apiKey = 'YOUR_API_KEY'; // Get a free key from https://exchangeratesapi.io/
+      const response = await fetch(`https://api.exchangeratesapi.io/v1/latest?access_key=${apiKey}&base=${fromCurrency}`);
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      const rate = data.rates[toCurrency];
+      const result = amount * rate;
+      output.value = result.toFixed(2);
+    } catch (e) {
+      // Fallback mock rates if API fails or no key
+      const mockRates = {
+        'USD': { 'EUR': 0.85, 'GBP': 0.73, 'JPY': 110, 'CAD': 1.25 },
+        'EUR': { 'USD': 1.18, 'GBP': 0.86, 'JPY': 129, 'CAD': 1.47 },
+        'GBP': { 'USD': 1.37, 'EUR': 1.16, 'JPY': 150, 'CAD': 1.71 },
+        'JPY': { 'USD': 0.0091, 'EUR': 0.0078, 'GBP': 0.0067, 'CAD': 0.011 },
+        'CAD': { 'USD': 0.80, 'EUR': 0.68, 'GBP': 0.58, 'JPY': 90 }
+      };
+      const rate = mockRates[fromCurrency]?.[toCurrency] || 1;
+      const result = amount * rate;
+      output.value = result.toFixed(2);
+      error.textContent = 'Using mock rates (API unavailable)';
+    }
+  }
+</script>

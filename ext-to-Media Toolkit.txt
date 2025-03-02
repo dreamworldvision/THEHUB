@@ -1,0 +1,192 @@
+import os
+import argparse
+from dotenv import load_dotenv
+from gtts import gTTS
+from moviepy.editor import *
+from moviepy.video.fx.all import fadein, fadeout
+import requests
+import openai
+from PIL import Image
+from io import BytesIO
+
+# Load environment variables
+load_dotenv()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+STABILITY_API_KEY = os.getenv("STABILITY_API_KEY")
+
+# ================== Shared Functions ==================
+def sanitize_filename(text):
+    """Clean text for safe filename"""
+    return "".join(c if c.isalnum() else "_" for c in text)[:50]
+
+def generate_image(prompt, engine="dalle", size="1024x1024", style="vivid", quality="standard"):
+    """Generate image using specified engine"""
+    if engine == "dalle":
+        openai.api_key = OPENAI_API_KEY
+        response = openai.images.generate(
+            model="dall-e-3",
+            prompt=prompt,
+            size=size,
+            quality=quality,
+            style=style,
+            n=1,
+            response_format="url"
+        )
+        img_url = response.data[0].url
+        return requests.get(img_url).content
+    
+    elif engine == "stability":
+        width, height = map(int, size.split('x'))
+        headers = {"Authorization": f"Bearer {STABILITY_API_KEY}"}
+        data = {
+            "text_prompts": [{"text": prompt}],
+            "width": width,
+            "height": height,
+            "steps": 30
+        }
+        response = requests.post(
+            "https://api.stability.ai/v1/generation/stable-diffusion-512-v2-1/text-to-image",
+            headers=headers,
+            json=data
+        )
+        if response.status_code == 200:
+            return response.content
+        raise Exception(f"Stability API Error: {response.text}")
+    
+    else:
+        raise ValueError("Unsupported engine. Choose 'dalle' or 'stability'")
+
+# ================== Video Generation ==================
+def text_to_speech(text, output_path="temp_audio.mp3"):
+    """Convert text to speech using gTTS"""
+    tts = gTTS(text=text, lang='en', slow=False)
+    tts.save(output_path)
+    return output_path
+
+def create_video_clip(image_content, audio_path, sentence, duration, add_transitions=True, add_subtitles=True):
+    """Create video clip with transitions and subtitles"""
+    # Save image to temp file
+    with open("temp_image.png", "wb") as f:
+        f.write(image_content)
+    
+    # Create image clip
+    clip = ImageClip("temp_image.png").set_duration(duration)
+    
+    # Add transitions
+    if add_transitions:
+        clip = clip.fx(fadein, 0.5).fx(fadeout, 0.5)
+    
+    # Add audio
+    audio = AudioFileClip(audio_path)
+    clip = clip.set_audio(audio)
+    
+    # Add subtitles
+    if add_subtitles:
+        txt_clip = TextClip(sentence, fontsize=24, color='white', 
+                          font='Arial', stroke_color='black', stroke_width=1)
+        txt_clip = txt_clip.set_position(('center', 'bottom')).set_duration(duration)
+        clip = CompositeVideoClip([clip, txt_clip])
+    
+    return clip
+
+def text_to_video(text, output_file="output.mp4", engine="dalle", **kwargs):
+    """Convert text to video"""
+    sentences = [s.strip() for s in text.split('.') if s.strip()]
+    clips = []
+    
+    for sentence in sentences:
+        try:
+            image_content = generate_image(sentence, engine=engine)
+            audio_path = text_to_speech(sentence)
+            audio = AudioFileClip(audio_path)
+            
+            clip = create_video_clip(
+                image_content, audio_path, sentence,
+                duration=audio.duration,
+                add_transitions=kwargs.get('transitions', True),
+                add_subtitles=kwargs.get('subtitles', True)
+            )
+            clips.append(clip)
+        except Exception as e:
+            print(f"Error processing sentence '{sentence}': {str(e)}")
+    
+    final_video = concatenate_videoclips(clips)
+    
+    if kwargs.get('background_music'):
+        music = AudioFileClip(kwargs['background_music']).volumex(0.3)
+        final_video.audio = CompositeAudioClip([final_video.audio, music])
+    
+    final_video.write_videofile(output_file, fps=24)
+    
+    # Cleanup temp files
+    for f in ["temp_image.png", "temp_audio.mp3"]:
+        if os.path.exists(f):
+            os.remove(f)
+    
+    return output_file
+
+# ================== Image Generation ==================
+def save_image(image_content, prompt, output_dir, engine):
+    """Save generated image to file"""
+    os.makedirs(output_dir, exist_ok=True)
+    filename = f"{engine}_{sanitize_filename(prompt)}.png"
+    output_path = os.path.join(output_dir, filename)
+    
+    img = Image.open(BytesIO(image_content))
+    img.save(output_path)
+    return output_path
+
+# ================== Main Interface ==================
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Text-to-Media Toolkit")
+    
+    # Shared arguments
+    parser.add_argument("--prompt", type=str, help="Input text/prompt")
+    parser.add_argument("--engine", choices=["dalle", "stability"], default="dalle")
+    parser.add_argument("--output-dir", default="outputs", help="Output directory")
+    
+    # Image-specific arguments
+    parser.add_argument("--size", default="1024x1024", help="Image size")
+    parser.add_argument("--style", choices=["vivid", "natural"], default="vivid")
+    parser.add_argument("--quality", choices=["standard", "hd"], default="standard")
+    
+    # Video-specific arguments
+    parser.add_argument("--mode", choices=["image", "video"], required=True,
+                      help="Generation mode")
+    parser.add_argument("--background-music", type=str, help="Background music file")
+    parser.add_argument("--no-transitions", action="store_false", dest="transitions")
+    parser.add_argument("--no-subtitles", action="store_false", dest="subtitles")
+    
+    args = parser.parse_args()
+
+    try:
+        if args.mode == "image":
+            if not args.prompt:
+                raise ValueError("Prompt is required for image generation")
+            
+            image_content = generate_image(
+                args.prompt,
+                engine=args.engine,
+                size=args.size,
+                style=args.style,
+                quality=args.quality
+            )
+            result = save_image(image_content, args.prompt, args.output_dir, args.engine)
+            print(f"Image saved to: {result}")
+        
+        elif args.mode == "video":
+            if not args.prompt:
+                raise ValueError("Prompt is required for video generation")
+            
+            result = text_to_video(
+                args.prompt,
+                output_file=os.path.join(args.output_dir, "video_output.mp4"),
+                engine=args.engine,
+                transitions=args.transitions,
+                subtitles=args.subtitles,
+                background_music=args.background_music
+            )
+            print(f"Video saved to: {result}")
+    
+    except Exception as e:
+        print(f"Error: {str(e)}")

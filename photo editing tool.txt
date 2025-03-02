@@ -1,0 +1,121 @@
+import os
+import argparse
+import numpy as np
+from PIL import Image
+import cv2
+from rembg import remove
+import gradio as gr  # For GUI version
+
+# ================== Core Functions ==================
+def crop_image(image_path, output_path, coordinates):
+    """Crop image with specified coordinates (left, top, right, bottom)"""
+    with Image.open(image_path) as img:
+        cropped = img.crop(coordinates)
+        cropped.save(output_path)
+    return output_path
+
+def auto_crop_subject(image_path, output_path):
+    """Automatically crop around main subject using edge detection"""
+    # First remove background
+    no_bg_image = remove_background(image_path)
+    
+    # Convert to OpenCV format
+    cv_image = cv2.cvtColor(np.array(no_bg_image), cv2.COLOR_RGB2BGR)
+    gray = cv2.cvtColor(cv_image, cv2.COLOR_BGR2GRAY)
+    
+    # Find contours
+    contours, _ = cv2.findContours(gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        raise ValueError("No subject detected for auto-cropping")
+    
+    # Get largest contour
+    largest_contour = max(contours, key=cv2.contourArea)
+    x,y,w,h = cv2.boundingRect(largest_contour)
+    
+    # Add padding
+    padding = 20
+    x = max(0, x - padding)
+    y = max(0, y - padding)
+    w = min(cv_image.shape[1] - x, w + 2*padding)
+    h = min(cv_image.shape[0] - y, h + 2*padding)
+    
+    # Crop and save
+    cropped = Image.fromarray(cv2.cvtColor(cv_image[y:y+h, x:x+w], cv2.COLOR_BGR2RGB))
+    cropped.save(output_path)
+    return output_path
+
+def remove_background(image_path, output_path=None):
+    """Remove background using AI (U²-Net)"""
+    input_image = Image.open(image_path)
+    output_image = remove(input_image)
+    
+    if output_path:
+        output_image.save(output_path)
+    return output_image
+
+# ================== Command Line Interface ==================
+def main_cli():
+    parser = argparse.ArgumentParser(description="Photo Editing Tool")
+    parser.add_argument("input", help="Input image path")
+    parser.add_argument("--output", default="output.png", help="Output path")
+    
+    # Crop options
+    crop_group = parser.add_mutually_exclusive_group()
+    crop_group.add_argument("--crop", nargs=4, type=int, 
+                          metavar=("LEFT", "TOP", "RIGHT", "BOTTOM"),
+                          help="Manual cropping coordinates")
+    crop_group.add_argument("--auto-crop", action="store_true",
+                          help="Auto-crop around subject")
+    
+    # Background options
+    parser.add_argument("--remove-bg", action="store_true",
+                      help="Remove background")
+    
+    args = parser.parse_args()
+    
+    try:
+        if args.crop or args.auto_crop:
+            if args.auto_crop:
+                result = auto_crop_subject(args.input, args.output)
+            else:
+                result = crop_image(args.input, args.output, args.crop)
+            print(f"Cropped image saved to: {result}")
+        
+        if args.remove_bg:
+            result = remove_background(args.input, args.output)
+            print(f"Background removed image saved to: {args.output}")
+    
+    except Exception as e:
+        print(f"Error: {str(e)}")
+
+# ================== GUI Interface ==================
+def gui_interface(input_image, operation):
+    """Gradio interface for photo editing"""
+    operations = {
+        'remove_bg': remove_background,
+        'auto_crop': auto_crop_subject
+    }
+    
+    if operation == 'manual_crop':
+        return "Use the crop tool in the image preview"
+    
+    result_image = operations[operation](input_image)
+    return result_image
+
+if __name__ == "__main__":
+    # Uncomment for CLI version
+    # main_cli()
+    
+    # Launch GUI
+    interface = gr.Interface(
+        fn=gui_interface,
+        inputs=[
+            gr.Image(label="Upload Image", type="filepath"),
+            gr.Radio(['remove_bg', 'auto_crop', 'manual_crop'], 
+                    label="Select Operation")
+        ],
+        outputs=gr.Image(label="Result"),
+        title="Photo Editor",
+        description="Remove backgrounds or auto-crop images"
+    )
+    interface.launch()

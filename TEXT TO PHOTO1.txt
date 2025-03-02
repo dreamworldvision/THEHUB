@@ -1,0 +1,14 @@
+# Install libraries
+!pip install diffusers transformers torch accelerate
+
+# Generate an image from text
+from diffusers import StableDiffusionPipeline
+import torch
+
+model_id = "runwayml/stable-diffusion-v1-5"
+pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16)
+pipe = pipe.to("cuda")  # Requires NVIDIA GPU
+
+prompt = "A futuristic cityscape at sunset, digital art"
+image = pipe(prompt).images[0]
+image.save("output.png")

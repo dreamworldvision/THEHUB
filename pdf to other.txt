@@ -1,0 +1,122 @@
+import os
+import argparse
+from pdf2docx import Converter
+from pdf2image import convert_from_path
+import pdfplumber
+import fitz  # PyMuPDF
+from PIL import Image
+
+def pdf_to_docx(pdf_path, output_dir):
+    """Convert PDF to Word document"""
+    docx_path = os.path.join(output_dir, os.path.basename(pdf_path).replace('.pdf', '.docx')
+    cv = Converter(pdf_path)
+    cv.convert(docx_path)
+    cv.close()
+    return docx_path
+
+def pdf_to_text(pdf_path, output_dir):
+    """Convert PDF to plain text"""
+    text_path = os.path.join(output_dir, os.path.basename(pdf_path).replace('.pdf', '.txt')
+    with pdfplumber.open(pdf_path) as pdf:
+        text = "\n".join(page.extract_text() for page in pdf.pages)
+    with open(text_path, 'w', encoding='utf-8') as f:
+        f.write(text)
+    return text_path
+
+def pdf_to_html(pdf_path, output_dir):
+    """Convert PDF to HTML"""
+    html_path = os.path.join(output_dir, os.path.basename(pdf_path).replace('.pdf', '.html'))
+    with fitz.open(pdf_path) as doc:
+        html = ""
+        for page in doc:
+            html += page.get_text("html")
+    with open(html_path, 'w', encoding='utf-8') as f:
+        f.write(f"<html><body>{html}</body></html>")
+    return html_path
+
+def pdf_to_images(pdf_path, output_dir, format='png', dpi=300):
+    """Convert PDF to images (one per page)"""
+    images = convert_from_path(pdf_path, dpi=dpi, fmt=format)
+    output_files = []
+    for i, image in enumerate(images):
+        img_path = os.path.join(output_dir, f"{os.path.splitext(os.path.basename(pdf_path))[0]}_page_{i+1}.{format}")
+        image.save(img_path)
+        output_files.append(img_path)
+    return output_files
+
+def pdf_to_excel(pdf_path, output_dir):
+    """Extract tables from PDF to Excel"""
+    excel_path = os.path.join(output_dir, os.path.basename(pdf_path).replace('.pdf', '.xlsx')
+    with pdfplumber.open(pdf_path) as pdf:
+        dfs = []
+        for page in pdf.pages:
+            tables = page.extract_tables()
+            for table in tables:
+                dfs.append(pd.DataFrame(table[1:], columns=table[0]))
+        
+        if dfs:
+            with pd.ExcelWriter(excel_path) as writer:
+                for i, df in enumerate(dfs):
+                    df.to_excel(writer, sheet_name=f"Table_{i+1}", index=False)
+            return excel_path
+    return None
+
+def convert_pdf(pdf_path, output_dir, formats, dpi=300, image_format='png'):
+    """Main conversion function"""
+    results = {}
+    os.makedirs(output_dir, exist_ok=True)
+    
+    if 'docx' in formats:
+        results['docx'] = pdf_to_docx(pdf_path, output_dir)
+    
+    if 'txt' in formats:
+        results['txt'] = pdf_to_text(pdf_path, output_dir)
+    
+    if 'html' in formats:
+        results['html'] = pdf_to_html(pdf_path, output_dir)
+    
+    if 'images' in formats:
+        results['images'] = pdf_to_images(pdf_path, output_dir, image_format, dpi)
+    
+    if 'excel' in formats:
+        results['excel'] = pdf_to_excel(pdf_path, output_dir)
+    
+    return results
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="PDF Conversion Tool")
+    parser.add_argument("input_pdf", help="Path to input PDF file")
+    parser.add_argument("-o", "--output-dir", default="output", help="Output directory")
+    parser.add_argument("-f", "--formats", nargs="+", 
+                      choices=['docx', 'txt', 'html', 'images', 'excel', 'all'],
+                      default=['all'], help="Formats to convert to")
+    parser.add_argument("--dpi", type=int, default=300, help="DPI for image conversion")
+    parser.add_argument("--image-format", default="png", choices=['png', 'jpeg', 'jpg'])
+    parser.add_argument("--password", help="Password for encrypted PDFs")
+
+    args = parser.parse_args()
+
+    # Handle 'all' format selection
+    if 'all' in args.formats:
+        args.formats = ['docx', 'txt', 'html', 'images', 'excel']
+
+    # Handle encrypted PDFs
+    if args.password:
+        os.environ['PDF_PASSWORD'] = args.password
+
+    try:
+        results = convert_pdf(
+            args.input_pdf,
+            args.output_dir,
+            args.formats,
+            args.dpi,
+            args.image_format
+        )
+        
+        print("Conversion successful:")
+        for fmt, path in results.items():
+            if path:
+                print(f"- {fmt.upper()}: {path}")
+        
+    except Exception as e:
+        print(f"Error during conversion: {str(e)}")

@@ -1,0 +1,16 @@
+import gradio as gr
+from diffusers import StableDiffusionPipeline
+
+pipe = StableDiffusionPipeline.from_pretrained("runwayml/stable-diffusion-v1-5")
+pipe = pipe.to("cuda")
+
+def generate_image(prompt):
+    image = pipe(prompt).images[0]
+    return image
+
+gr.Interface(
+    fn=generate_image,
+    inputs="text",
+    outputs="image",
+    title="Text-to-Image Generator"
+).launch()

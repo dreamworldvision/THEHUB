@@ -1,0 +1,67 @@
+<!-- PDF Merger Widget -->
+<div id="pdf-merger-widget" style="max-width: 400px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 5px; font-family: Arial, sans-serif;">
+  <h3 style="margin-top: 0; text-align: center;">Merge PDFs</h3>
+  <input 
+    type="file" 
+    id="pdf-input" 
+    accept=".pdf" 
+    multiple 
+    style="width: 100%; padding: 8px; margin-bottom: 10px;"
+  >
+  <button 
+    onclick="mergePDFs()" 
+    style="width: 100%; padding: 10px; background-color: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;"
+  >
+    Merge PDFs
+  </button>
+  <div id="pdf-output" style="text-align: center; margin-top: 15px;"></div>
+</div>
+
+<!-- PDF-Lib Library (CDN) -->
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+
+<!-- JavaScript Logic -->
+<script>
+  async function mergePDFs() {
+    const input = document.getElementById('pdf-input');
+    const output = document.getElementById('pdf-output');
+    const files = input.files;
+
+    // Clear previous output
+    output.innerHTML = '';
+
+    if (!files || files.length < 2) {
+      output.innerHTML = '<p style="color: red;">Please upload at least 2 PDF files!</p>';
+      return;
+    }
+
+    try {
+      const { PDFDocument } = window['pdf-lib'];
+      const mergedPdf = await PDFDocument.create();
+
+      // Process each uploaded file
+      for (const file of files) {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdfDoc = await PDFDocument.load(arrayBuffer);
+        const pages = await mergedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+        pages.forEach((page) => mergedPdf.addPage(page));
+      }
+
+      // Save the merged PDF
+      const mergedPdfBytes = await mergedPdf.save();
+      const blob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+
+      // Create download link
+      const downloadLink = document.createElement('a');
+      downloadLink.href = url;
+      downloadLink.download = 'merged.pdf';
+      downloadLink.innerText = 'Download Merged PDF';
+      downloadLink.style = 'display: block; color: #2196F3; text-decoration: none;';
+      output.appendChild(downloadLink);
+    } catch (error) {
+      output.innerHTML = '<p style="color: red;">Error merging PDFs!</p>';
+      console.error(error);
+    }
+  }
+</script>
